@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.caldavtimetrack</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>CalDAV Time Track</name>
+  <summary>Track time on CalDAV tasks with a Pomodoro timer</summary>
+  <description>
+    <p>
+      CalDAV Time Track is a native GNOME application that connects to your
+      CalDAV server (e.g. Nextcloud) and lets you track time spent on tasks
+      using a stopwatch or Pomodoro technique. Completed time entries are
+      saved back to your calendar as events.
+    </p>
+    <ul>
+      <li>Browse tasks grouped by calendar</li>
+      <li>Create, edit and complete tasks</li>
+      <li>Start a stopwatch or Pomodoro timer per task</li>
+      <li>Automatically saves time entries as calendar events</li>
+      <li>Weekly calendar view of events</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.caldavtimetrack.desktop</launchable>
+  <url type="homepage">https://github.com/caldavtimetrack/caldav-time-track-gtk</url>
+  <url type="bugtracker">https://github.com/caldavtimetrack/caldav-time-track-gtk/issues</url>
+  <developer id="io.github.caldavtimetrack">
+    <name>CalDAV Time Track Contributors</name>
+  </developer>
+  <releases>
+    <release version="1.0.0" date="2026-03-01">
+      <description><p>Initial release.</p></description>
+    </release>
+  </releases>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Tasks view showing calendar task groups</caption>
+    </screenshot>
+  </screenshots>
+  <categories>
+    <category>Office</category>
+    <category>ProjectManagement</category>
+  </categories>
+  <keywords>
+    <keyword>caldav</keyword>
+    <keyword>nextcloud</keyword>
+    <keyword>time</keyword>
+    <keyword>tasks</keyword>
+    <keyword>pomodoro</keyword>
+  </keywords>
+</component>

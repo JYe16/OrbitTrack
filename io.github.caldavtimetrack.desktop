@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Name=CalDAV Time Track
+GenericName=Time Tracker
+Comment=Track time on CalDAV tasks
+Exec=caldav-time-track-gtk
+Icon=io.github.caldavtimetrack
+Terminal=false
+Type=Application
+Categories=Office;ProjectManagement;GTK;GNOME;
+Keywords=caldav;nextcloud;time;track;tasks;pomodoro;
+StartupNotify=true
+StartupWMClass=io.github.caldavtimetrack
+X-GNOME-UsesNotifications=false

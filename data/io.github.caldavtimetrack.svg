@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="#3584e4"/>
+  <!-- Clock face -->
+  <circle cx="64" cy="64" r="46" fill="white" opacity="0.92"/>
+  <!-- Hour marks -->
+  <line x1="64" y1="22" x2="64" y2="30" stroke="#3d3d3d" stroke-width="3" stroke-linecap="round"/>
+  <line x1="106" y1="64" x2="98" y2="64" stroke="#3d3d3d" stroke-width="3" stroke-linecap="round"/>
+  <line x1="64" y1="106" x2="64" y2="98" stroke="#3d3d3d" stroke-width="3" stroke-linecap="round"/>
+  <line x1="22" y1="64" x2="30" y2="64" stroke="#3d3d3d" stroke-width="3" stroke-linecap="round"/>
+  <!-- Hour hand -->
+  <line x1="64" y1="64" x2="64" y2="40" stroke="#1c1c1e" stroke-width="5" stroke-linecap="round"/>
+  <!-- Minute hand -->
+  <line x1="64" y1="64" x2="84" y2="64" stroke="#1c1c1e" stroke-width="4" stroke-linecap="round"/>
+  <!-- Center dot -->
+  <circle cx="64" cy="64" r="4" fill="#e01b24"/>
+  <!-- Play triangle (time tracking indicator) -->
+  <polygon points="76,86 76,102 90,94" fill="#3584e4" opacity="0.9"/>
+</svg>
