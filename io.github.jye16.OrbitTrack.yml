@@ -28,7 +28,9 @@ modules:
             ${FLATPAK_DEST}/share/metainfo/io.github.jye16.OrbitTrack.metainfo.xml
       - install -Dm644 data/io.github.jye16.OrbitTrack.svg
             ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/io.github.jye16.OrbitTrack.svg
+      - install -Dm644 LICENSE -t ${FLATPAK_DEST}/share/licenses/$FLATPAK_ID/
     sources:
       - type: git
         url: https://github.com/JYe16/OrbitTrack.git
         tag: v1.0.0
+        commit: bc08ba1a13c5aa4fb1e10b4be0d024ea13dd1d87

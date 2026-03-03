@@ -1,0 +1,5 @@
+# Generated with flatpak-pip-generator --runtime org.gnome.Sdk//49 --yaml --output python3-six six
+build-commands: []
+buildsystem: simple
+modules: []
+name: python3-six
