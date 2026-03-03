@@ -1,11 +1,11 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "caldav-time-track-gtk"
+name = "orbittrack"
 version = "1.0.0"
-description = "GTK4/Libadwaita CalDAV time tracker for GNOME"
+description = "GTK4/Libadwaita CalDAV task time tracker for GNOME"
 readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "GPL-3.0-or-later" }
@@ -17,14 +17,14 @@ dependencies = [
 ]
 
 [project.scripts]
-caldav-time-track = "caldav_time_track_gtk.main:main"
+orbittrack = "orbittrack.main:main"
 
 [project.gui-scripts]
-caldav-time-track-gtk = "caldav_time_track_gtk.main:main"
+orbittrack = "orbittrack.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["caldav_time_track_gtk*"]
+include = ["orbittrack*"]
 
 [tool.setuptools.package-data]
-"caldav_time_track_gtk" = ["data/*"]
+"orbittrack" = ["data/*"]

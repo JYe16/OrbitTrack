@@ -1,8 +1,8 @@
 """
 Credential & settings persistence.
 
-Credentials are stored in $XDG_CONFIG_HOME/caldav-time-track/credentials.json.
-For Flatpak this resolves to ~/.var/app/<id>/config/caldav-time-track/...
+Credentials are stored in $XDG_CONFIG_HOME/orbittrack/credentials.json.
+For Flatpak this resolves to ~/.var/app/<id>/config/orbittrack/...
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ import gi
 gi.require_version("GLib", "2.0")
 from gi.repository import GLib
 
-_CONFIG_DIR = os.path.join(GLib.get_user_config_dir(), "caldav-time-track")
+_CONFIG_DIR = os.path.join(GLib.get_user_config_dir(), "orbittrack")
 _CRED_FILE = os.path.join(_CONFIG_DIR, "credentials.json")
 _SETTINGS_FILE = os.path.join(_CONFIG_DIR, "settings.json")
 

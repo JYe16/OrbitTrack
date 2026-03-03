@@ -1,14 +1,14 @@
 [Desktop Entry]
 Version=1.0
-Name=CalDAV Time Track
+Name=OrbitTrack
 GenericName=Time Tracker
-Comment=Track time on CalDAV tasks
-Exec=caldav-time-track-gtk
-Icon=io.github.caldavtimetrack
+Comment=Track time on tasks synced with CalDAV
+Exec=orbittrack
+Icon=io.github.jye16.OrbitTrack
 Terminal=false
 Type=Application
 Categories=Office;ProjectManagement;GTK;GNOME;
 Keywords=caldav;nextcloud;time;track;tasks;pomodoro;
 StartupNotify=true
-StartupWMClass=io.github.caldavtimetrack
-X-GNOME-UsesNotifications=false
+StartupWMClass=io.github.jye16.OrbitTrack
+X-GNOME-UsesNotifications=true

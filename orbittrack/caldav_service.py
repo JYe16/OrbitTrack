@@ -149,6 +149,43 @@ def _connect(url: str, username: str, password: str) -> caldav.DAVClient:
     return caldav.DAVClient(url=url, username=username, password=password)
 
 
+def get_calendar_ctags(
+    url: str, username: str, password: str
+) -> dict[str, str]:
+    """Return a mapping of calendar_id → ctag (or getctag / sync-token).
+
+    This is a lightweight PROPFIND that does NOT download any events or
+    tasks.  The caller can compare ctags with the previous run to decide
+    whether a full re-fetch is necessary.
+    """
+    client = _connect(url, username, password)
+    principal = client.principal()
+    calendars = principal.calendars()
+    result: dict[str, str] = {}
+
+    for cal in calendars:
+        cal_id = str(cal.url)
+        tag = ""
+        # Try several common properties
+        for prop_name in ("getctag", "sync-token", "sync_token"):
+            try:
+                val = cal.get_property(prop_name)
+                if val:
+                    tag = str(val).strip()
+                    break
+            except Exception:
+                pass
+        if not tag:
+            # Fallback: use the ETag of the calendar collection itself
+            try:
+                tag = str(getattr(cal, "etag", "") or "")
+            except Exception:
+                pass
+        result[cal_id] = tag
+
+    return result
+
+
 def _parse_iso_datetime(value: str) -> datetime:
     """Parse ISO datetime, including UTC 'Z' suffix for Python 3.10 compatibility."""
     normalized = value.strip()
@@ -336,7 +373,7 @@ def create_task(
 
     vcal = f"""BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//CalDAV Time Track//EN
+PRODID:-//OrbitTrack//EN
 BEGIN:VTODO
 UID:{task_uid}
 DTSTAMP:{now_stamp}
@@ -569,14 +606,14 @@ def create_event(
 
     vcal = f"""BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//CalDAV Time Track//EN
+PRODID:-//OrbitTrack//EN
 BEGIN:VEVENT
 UID:{event_uid}
 DTSTAMP:{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}
 DTSTART:{start_dt.strftime('%Y%m%dT%H%M%SZ') if start_dt.tzinfo else start_dt.strftime('%Y%m%dT%H%M%S')}
 DTEND:{end_dt.strftime('%Y%m%dT%H%M%SZ') if end_dt.tzinfo else end_dt.strftime('%Y%m%dT%H%M%S')}
 SUMMARY:{summary}
-DESCRIPTION:Tracked via CalDAV Time Track
+DESCRIPTION:Tracked via OrbitTrack
 END:VEVENT
 END:VCALENDAR"""
 

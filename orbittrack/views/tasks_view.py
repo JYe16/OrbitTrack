@@ -16,15 +16,15 @@ import gi
 gi.require_version("Adw", "1")
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import Adw, GLib, Gtk, Gdk
+from gi.repository import Adw, GLib, Gtk, Gdk, GObject
 
 from .. import caldav_service
 
 
 class TasksView(Gtk.Box):
     __gsignals__ = {
-        "start-timer": (GLib.SignalFlags.RUN_FIRST, None, (str, str, str, str)),
-        "task-changed": (GLib.SignalFlags.RUN_FIRST, None, ()),
+        "start-timer": (GObject.SignalFlags.RUN_FIRST, None, (str, str, str, str)),
+        "task-changed": (GObject.SignalFlags.RUN_FIRST, None, ()),
     }
 
     def __init__(self) -> None:
@@ -44,6 +44,7 @@ class TasksView(Gtk.Box):
 
     def set_loading(self, loading: bool) -> None:
         if loading:
+            self._status_stack.set_visible(True)
             self._status_stack.set_visible_child_name("loading")
             self._content_scroll.set_visible(False)
         # loading=False is handled in update()
@@ -51,14 +52,12 @@ class TasksView(Gtk.Box):
     def update(self, task_groups: list[dict]) -> None:
         self._groups = task_groups
         self._rebuild_list()
-        if task_groups:
-            self._status_stack.set_visible_child_name("empty")  # hidden
+        total = sum(len(g.get("tasks", [])) for g in task_groups)
+        if total > 0:
+            self._status_stack.set_visible(False)
             self._content_scroll.set_visible(True)
-            total = sum(len(g["tasks"]) for g in task_groups)
-            if total == 0:
-                self._status_stack.set_visible_child_name("no_tasks")
-                self._content_scroll.set_visible(False)
         else:
+            self._status_stack.set_visible(True)
             self._status_stack.set_visible_child_name("no_tasks")
             self._content_scroll.set_visible(False)
 
@@ -121,8 +120,12 @@ class TasksView(Gtk.Box):
         self._content_scroll.set_vexpand(True)
         self._content_scroll.set_visible(False)
 
+        clamp = Adw.Clamp()
+        clamp.set_maximum_size(800)
+        clamp.set_tightening_threshold(500)
         self._content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        self._content_scroll.set_child(self._content_box)
+        clamp.set_child(self._content_box)
+        self._content_scroll.set_child(clamp)
 
         self.append(self._content_scroll)
 
@@ -269,6 +272,14 @@ class TasksView(Gtk.Box):
     def _on_task_created(self, _dlg, task: dict) -> None:
         creds = self._creds
 
+        # Optimistically add the new task to the UI immediately
+        cal_id = task.get("calendar_id", "")
+        for group in self._groups:
+            if group.get("calendar_id") == cal_id:
+                group.setdefault("tasks", []).insert(0, task)
+                break
+        self.update(self._groups)
+
         def _worker():
             try:
                 caldav_service.create_task(
@@ -390,7 +401,7 @@ class _TaskRow(Adw.ActionRow):
         task = self._task
         completed = task["status"] == "COMPLETED"
 
-        self.set_title(task["summary"])
+        self.set_title(GLib.markup_escape_text(task["summary"]))
         if completed:
             self.add_css_class("dim-label")
 
@@ -419,7 +430,7 @@ class _TaskRow(Adw.ActionRow):
             elif prio <= 6:
                 subtitle_parts.append("· Medium priority")
         if subtitle_parts:
-            self.set_subtitle("  ·  ".join(subtitle_parts))
+            self.set_subtitle(GLib.markup_escape_text("  ·  ".join(subtitle_parts)))
 
         # Completion checkbox (prefix)
         check = Gtk.CheckButton()
@@ -475,7 +486,7 @@ class _TaskRow(Adw.ActionRow):
 
 class _TaskEditDialog(Adw.Dialog):
     __gsignals__ = {
-        "task-saved": (GLib.SignalFlags.RUN_FIRST, None, (object,))
+           "task-saved": (GObject.SignalFlags.RUN_FIRST, None, (object,))
     }
 
     def __init__(
@@ -521,12 +532,57 @@ class _TaskEditDialog(Adw.Dialog):
         self._desc_row.set_text(self._task.get("description", "") or "")
         group.add(self._desc_row)
 
-        # Due date
-        self._due_row = Adw.EntryRow(title="Due date (YYYY-MM-DD)")
+        # Due date – calendar popover picker
+        self._due_row = Adw.ActionRow(title="Due date")
+        self._due_date: str = ""  # ISO date string or ""
         due_val = self._task.get("due") or ""
         if due_val and "T" in due_val:
             due_val = due_val[:10]
-        self._due_row.set_text(due_val)
+        if due_val:
+            self._due_date = due_val
+            self._due_row.set_subtitle(due_val)
+
+        # Calendar popover
+        self._cal_widget = Gtk.Calendar()
+        if due_val:
+            try:
+                from datetime import date as _date
+                d = _date.fromisoformat(due_val)
+                dt = GLib.DateTime.new_local(d.year, d.month, d.day, 0, 0, 0)
+                self._cal_widget.select_day(dt)
+            except Exception:
+                pass
+        self._cal_widget.connect("day-selected", self._on_due_day_selected)
+
+        pop_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        pop_box.set_margin_top(8)
+        pop_box.set_margin_bottom(8)
+        pop_box.set_margin_start(8)
+        pop_box.set_margin_end(8)
+        pop_box.append(self._cal_widget)
+
+        btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        btn_box.set_homogeneous(True)
+        today_btn = Gtk.Button(label="Today")
+        today_btn.add_css_class("suggested-action")
+        today_btn.connect("clicked", self._on_due_today)
+        clear_btn = Gtk.Button(label="Clear")
+        clear_btn.add_css_class("destructive-action")
+        clear_btn.connect("clicked", self._on_due_clear)
+        btn_box.append(today_btn)
+        btn_box.append(clear_btn)
+        pop_box.append(btn_box)
+
+        self._due_popover = Gtk.Popover()
+        self._due_popover.set_child(pop_box)
+
+        pick_btn = Gtk.MenuButton()
+        pick_btn.set_icon_name("x-office-calendar-symbolic")
+        pick_btn.set_popover(self._due_popover)
+        pick_btn.set_valign(Gtk.Align.CENTER)
+        pick_btn.add_css_class("flat")
+        self._due_row.add_suffix(pick_btn)
+        self._due_row.set_activatable_widget(pick_btn)
         group.add(self._due_row)
 
         # Priority (Adw.SpinRow – libadwaita 1.6, available in GNOME 49)
@@ -559,11 +615,30 @@ class _TaskEditDialog(Adw.Dialog):
         toolbar_view.set_content(prefs_page)
         self.set_child(toolbar_view)
 
+    def _on_due_day_selected(self, calendar: Gtk.Calendar) -> None:
+        gdt = calendar.get_date()
+        self._due_date = f"{gdt.get_year():04d}-{gdt.get_month():02d}-{gdt.get_day_of_month():02d}"
+        self._due_row.set_subtitle(self._due_date)
+        self._due_popover.popdown()
+
+    def _on_due_today(self, _btn: Gtk.Button) -> None:
+        from datetime import date as _date
+        today = _date.today()
+        self._due_date = today.isoformat()
+        self._due_row.set_subtitle(self._due_date)
+        dt = GLib.DateTime.new_local(today.year, today.month, today.day, 0, 0, 0)
+        self._cal_widget.select_day(dt)
+        self._due_popover.popdown()
+
+    def _on_due_clear(self, _btn: Gtk.Button) -> None:
+        self._due_date = ""
+        self._due_row.set_subtitle("")
+        self._due_popover.popdown()
+
     def _on_save(self, _btn: Gtk.Button) -> None:
         self._task["summary"] = self._summary_row.get_text().strip() or "Untitled"
         self._task["description"] = self._desc_row.get_text().strip()
-        due = self._due_row.get_text().strip()
-        self._task["due"] = due or None
+        self._task["due"] = self._due_date or None
         self._task["priority"] = int(self._prio_row.get_value())
         if self._mode == "create" and hasattr(self, "_cal_row"):
             idx = self._cal_row.get_selected()

@@ -8,7 +8,7 @@ import gi
 gi.require_version("Adw", "1")
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import Adw, GLib, Gtk
+from gi.repository import Adw, GObject, Gtk
 
 
 def _format_time(secs: int) -> str:
@@ -30,7 +30,7 @@ class TimerOverlay(Gtk.Box):
     """
 
     __gsignals__ = {
-        "timer-stopped": (GLib.SignalFlags.RUN_FIRST, None, ()),
+        "timer-stopped": (GObject.SignalFlags.RUN_FIRST, None, ()),
     }
 
     def __init__(self) -> None:
@@ -128,7 +128,7 @@ class TimerOverlay(Gtk.Box):
             frac = elapsed / pom_secs if pom_secs else 0
             self._progress_bar.set_fraction(min(1.0, frac))
             self._progress_box.set_visible(True)
-            self._clock.set_angle_fraction(frac)
+            self._clock.set_angle_fraction(frac, elapsed)
         elif mode == "pomodoro" and phase == "break":
             break_secs = 5 * 60
             remaining = max(0, break_secs - elapsed)
@@ -136,7 +136,7 @@ class TimerOverlay(Gtk.Box):
             frac = elapsed / break_secs if break_secs else 0
             self._progress_bar.set_fraction(min(1.0, frac))
             self._progress_box.set_visible(True)
-            self._clock.set_angle_fraction(frac)
+            self._clock.set_angle_fraction(frac, elapsed)
         else:
             self._time_label.set_text(_format_time(elapsed))
             self._progress_box.set_visible(False)
@@ -159,8 +159,9 @@ class _AnalogClock(Gtk.DrawingArea):
         self._frac = None
         self.queue_draw()
 
-    def set_angle_fraction(self, frac: float) -> None:
+    def set_angle_fraction(self, frac: float, elapsed: int = 0) -> None:
         self._frac = frac
+        self._elapsed = elapsed
         self.queue_draw()
 
     def _draw(self, area, cr, w, h) -> None:

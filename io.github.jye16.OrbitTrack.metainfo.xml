@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.caldavtimetrack</id>
+  <id>io.github.jye16.OrbitTrack</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
-  <name>CalDAV Time Track</name>
+  <name>OrbitTrack</name>
   <summary>Track time on CalDAV tasks with a Pomodoro timer</summary>
   <description>
     <p>
-      CalDAV Time Track is a native GNOME application that connects to your
+      OrbitTrack is a native GNOME application that connects to your
       CalDAV server (e.g. Nextcloud) and lets you track time spent on tasks
       using a stopwatch or Pomodoro technique. Completed time entries are
       saved back to your calendar as events.
@@ -20,11 +20,12 @@
       <li>Weekly calendar view of events</li>
     </ul>
   </description>
-  <launchable type="desktop-id">io.github.caldavtimetrack.desktop</launchable>
-  <url type="homepage">https://github.com/caldavtimetrack/caldav-time-track-gtk</url>
-  <url type="bugtracker">https://github.com/caldavtimetrack/caldav-time-track-gtk/issues</url>
-  <developer id="io.github.caldavtimetrack">
-    <name>CalDAV Time Track Contributors</name>
+  <launchable type="desktop-id">io.github.jye16.OrbitTrack.desktop</launchable>
+  <url type="homepage">https://github.com/JYe16/OrbitTrack</url>
+  <url type="bugtracker">https://github.com/JYe16/OrbitTrack/issues</url>
+  <url type="vcs-browser">https://github.com/JYe16/OrbitTrack</url>
+  <developer id="io.github.jye16">
+    <name>OrbitTrack Contributors</name>
   </developer>
   <releases>
     <release version="1.0.0" date="2026-03-01">
@@ -43,6 +44,19 @@
   <screenshots>
     <screenshot type="default">
       <caption>Tasks view showing calendar task groups</caption>
+      <image>https://raw.githubusercontent.com/JYe16/OrbitTrack/main/screenshots/tasks.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Today view with time entries</caption>
+      <image>https://raw.githubusercontent.com/JYe16/OrbitTrack/main/screenshots/today.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Pomodoro timer overlay</caption>
+      <image>https://raw.githubusercontent.com/JYe16/OrbitTrack/main/screenshots/pomodoro.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Timer in action</caption>
+      <image>https://raw.githubusercontent.com/JYe16/OrbitTrack/main/screenshots/timer.png</image>
     </screenshot>
   </screenshots>
   <categories>

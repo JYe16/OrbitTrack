@@ -8,11 +8,10 @@ Adw.ApplicationWindow
     Gtk.Stack  (page_stack)
       "login"  → LoginView
       "main"   → Adw.ToolbarView
-                   HeaderBar  (ViewSwitcher centred + action buttons)
+                                     HeaderBar  (action buttons)
                    Adw.ViewStack
                      tasks    → TasksView
                      today    → TodayView
-                     calendar → CalendarView
                    ViewSwitcherBar  (bottom, responsive)
     TimerOverlay                       ← GTK overlay child, hidden by default
 """
@@ -26,13 +25,12 @@ import gi
 gi.require_version("Adw", "1")
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import Adw, GLib, Gtk
+from gi.repository import Adw, Gio, GLib, Gtk, GObject
 
-from .. import caldav_service, config
+from .. import caldav_service, config, cache
 from ..views.login_view import LoginView
 from ..views.tasks_view import TasksView
 from ..views.today_view import TodayView
-from ..views.calendar_view import CalendarView
 from ..views.timer_overlay import TimerOverlay
 
 
@@ -41,7 +39,8 @@ class MainWindow(Adw.ApplicationWindow):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.set_title("CalDAV Time Track")
+        self.set_title("OrbitTrack")
+        self.set_icon_name("io.github.jye16.OrbitTrack")
         self.set_default_size(900, 680)
 
         # Shared state
@@ -76,7 +75,12 @@ class MainWindow(Adw.ApplicationWindow):
         # ── Login page ──
         self._login_view = LoginView()
         self._login_view.connect("login-requested", self._on_login_requested)
-        self._page_stack.add_named(self._login_view, "login")
+        login_toolbar = Adw.ToolbarView()
+        login_header = Adw.HeaderBar()
+        login_header.set_title_widget(Gtk.Label(label=""))  # empty title
+        login_toolbar.add_top_bar(login_header)
+        login_toolbar.set_content(self._login_view)
+        self._page_stack.add_named(login_toolbar, "login")
 
         # ── Main page ──
         main_page = self._build_main_page()
@@ -105,7 +109,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._tasks_view.connect("task-changed", self._on_task_changed)
 
         self._today_view = TodayView()
-        self._calendar_view = CalendarView()
+        self._today_view.connect("start-timer", self._on_start_timer)
 
         self._view_stack.add_titled_with_icon(
             self._tasks_view, "tasks", "Tasks", "checkbox-checked-symbolic"
@@ -113,18 +117,13 @@ class MainWindow(Adw.ApplicationWindow):
         self._view_stack.add_titled_with_icon(
             self._today_view, "today", "Today", "x-office-calendar-symbolic"
         )
-        self._view_stack.add_titled_with_icon(
-            self._calendar_view, "calendar", "Calendar", "month-symbolic"
-        )
 
-        # ViewSwitcher for header (wide screens)
-        switcher = Adw.ViewSwitcher()
-        switcher.set_policy(Adw.ViewSwitcherPolicy.WIDE)
-        switcher.set_stack(self._view_stack)
-
-        # HeaderBar
+        # HeaderBar with responsive ViewSwitcherTitle
         header = Adw.HeaderBar()
-        header.set_title_widget(switcher)
+        switcher_title = Adw.ViewSwitcherTitle()
+        switcher_title.set_stack(self._view_stack)
+        switcher_title.set_title("OrbitTrack")
+        header.set_title_widget(switcher_title)
 
         # Refresh button
         refresh_btn = Gtk.Button.new_from_icon_name("view-refresh-symbolic")
@@ -146,12 +145,15 @@ class MainWindow(Adw.ApplicationWindow):
         header.pack_end(settings_btn)
         header.pack_end(refresh_btn)
 
-        # ViewSwitcherBar (bottom, narrow screens)
+        # ViewSwitcherBar (bottom, revealed when header switcher overflows)
         switcher_bar = Adw.ViewSwitcherBar()
         switcher_bar.set_stack(self._view_stack)
 
-        # Reveal bottom bar only when header switcher overflows
-        switcher_bar.set_reveal(True)
+        # Bind: reveal bottom bar when top title can't fit the switcher
+        switcher_title.bind_property(
+            "title-visible", switcher_bar, "reveal",
+            GObject.BindingFlags.SYNC_CREATE,
+        )
 
         # ToolbarView wraps everything
         toolbar_view = Adw.ToolbarView()
@@ -204,9 +206,31 @@ class MainWindow(Adw.ApplicationWindow):
             # Propagate credentials to views that perform network ops
             self._tasks_view.set_credentials(self._creds)
             self._page_stack.set_visible_child_name("main")
+            # Show cached data instantly, then refresh from server
+            self._load_cache()
             self._refresh_all()
         else:
             self._login_view.show_error("Could not connect – check URL and credentials.")
+
+    # ── Cache ─────────────────────────────────────────────────────────────────
+
+    def _load_cache(self) -> None:
+        """Populate views from local cache for instant startup."""
+        calendars = cache.load_calendars()
+        task_groups = cache.load_task_groups()
+        today_events = cache.load_today_events()
+        self._has_cached_data = bool(calendars or task_groups or today_events)
+        if calendars:
+            self._calendars = calendars
+            self._tasks_view.set_calendars(calendars)
+        if task_groups:
+            self._task_groups = task_groups
+            visible_tg = self._filter_by_visible(task_groups)
+            self._tasks_view.update(visible_tg)
+        if today_events or task_groups:
+            visible_ev = self._filter_by_visible(today_events) if today_events else []
+            visible_tg = self._filter_by_visible(task_groups) if task_groups else []
+            self._today_view.update(visible_ev, task_groups=visible_tg)
 
     # ── Refresh ───────────────────────────────────────────────────────────────
 
@@ -217,9 +241,10 @@ class MainWindow(Adw.ApplicationWindow):
         if not self._creds:
             return
         self._refresh_btn.set_sensitive(False)
-        self._tasks_view.set_loading(True)
-        self._today_view.set_loading(True)
-        self._calendar_view.set_loading(True)
+        # Only show loading spinners if there's no cached data visible
+        if not getattr(self, '_has_cached_data', False):
+            self._tasks_view.set_loading(True)
+            self._today_view.set_loading(True)
 
         creds = self._creds
         show_completed = self._settings.get("show_completed", False)
@@ -236,16 +261,10 @@ class MainWindow(Adw.ApplicationWindow):
             except Exception:
                 task_groups = []
 
-            now = datetime.now(timezone.utc)
-            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-            today_end = now.replace(hour=23, minute=59, second=59, microsecond=0).isoformat()
-            week_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            week_start = (week_start.replace(day=week_start.day - week_start.weekday())).isoformat()
-            week_end_dt = datetime.fromisoformat(week_start).replace(
-                hour=23, minute=59, second=59
-            )
-            from datetime import timedelta
-            week_end = (week_end_dt + timedelta(days=6)).isoformat()
+            # Use LOCAL time for day boundaries so all local-day events are found
+            local_now = datetime.now().astimezone()
+            today_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+            today_end = local_now.replace(hour=23, minute=59, second=59, microsecond=0).isoformat()
 
             try:
                 today_events = caldav_service.list_events(
@@ -253,42 +272,48 @@ class MainWindow(Adw.ApplicationWindow):
                 )
             except Exception:
                 today_events = []
-            try:
-                week_events = caldav_service.list_events(
-                    **creds, start_date=week_start, end_date=week_end
-                )
-            except Exception:
-                week_events = []
 
             GLib.idle_add(
                 self._finish_refresh,
                 cals,
                 task_groups,
                 today_events,
-                week_events,
             )
 
         threading.Thread(target=_worker, daemon=True).start()
+
+    def _filter_by_visible(self, groups: list[dict], key: str = "calendar_id") -> list[dict]:
+        """Filter calendar-grouped data by the user's visible calendars setting."""
+        hidden = set(self._settings.get("hidden_calendars", []))
+        if not hidden:
+            return groups
+        return [g for g in groups if g.get(key, "") not in hidden]
 
     def _finish_refresh(
         self,
         calendars: list,
         task_groups: list,
         today_events: list,
-        week_events: list,
     ) -> None:
         self._calendars = calendars
         self._task_groups = task_groups
 
+        visible_task_groups = self._filter_by_visible(task_groups)
+        visible_events = self._filter_by_visible(today_events)
+
         self._tasks_view.set_calendars(calendars)
-        self._tasks_view.update(task_groups)
-        self._today_view.update(today_events)
-        self._calendar_view.update(week_events)
+        self._tasks_view.update(visible_task_groups)
+        self._today_view.update(visible_events, task_groups=visible_task_groups)
 
         self._tasks_view.set_loading(False)
         self._today_view.set_loading(False)
-        self._calendar_view.set_loading(False)
         self._refresh_btn.set_sensitive(True)
+
+        # Persist to cache for next launch
+        cache.save_calendars(calendars)
+        cache.save_task_groups(task_groups)
+        cache.save_today_events(today_events)
+        self._has_cached_data = True
 
     def _on_task_changed(self, _view, *_args) -> None:
         """A task was created/updated/deleted – refresh task list silently."""
@@ -435,19 +460,19 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_settings_saved(self, _dlg, settings: dict) -> None:
         self._settings = settings
         config.save_settings(settings)
-        # Re-fetch with new show_completed preference
-        self._on_task_changed(None)
+        # Re-apply visibility filter and refresh
+        self._refresh_all()
 
     # ── Logout ────────────────────────────────────────────────────────────────
 
     def _on_logout_clicked(self, _btn: Gtk.Button) -> None:
         config.clear_credentials()
+        cache.clear()
         self._creds = None
         self._task_groups = []
         self._calendars = []
         self._tasks_view.update([])
         self._today_view.update([])
-        self._calendar_view.update([])
         self._page_stack.set_visible_child_name("login")
 
 
@@ -457,7 +482,7 @@ class MainWindow(Adw.ApplicationWindow):
 class _SettingsDialog(Adw.Dialog):
     __gsignals__ = {
         "settings-saved": (
-            GLib.SignalFlags.RUN_FIRST,
+            GObject.SignalFlags.RUN_FIRST,
             None,
             (object,),
         )
@@ -529,6 +554,18 @@ class _SettingsDialog(Adw.Dialog):
         tasks_group.add(self._show_row)
         prefs_page.add(tasks_group)
 
+        # ── Visible Calendars group ──
+        vis_group = Adw.PreferencesGroup(title="Visible Calendars")
+        vis_group.set_description("Choose which calendars to show in Tasks and Today")
+        hidden = set(settings.get("hidden_calendars", []))
+        self._cal_switches: list[tuple[dict, Adw.SwitchRow]] = []
+        for cal in calendars:
+            sw = Adw.SwitchRow(title=cal.get("name", "Unnamed"))
+            sw.set_active(cal["id"] not in hidden)
+            vis_group.add(sw)
+            self._cal_switches.append((cal, sw))
+        prefs_page.add(vis_group)
+
         toolbar_view.set_content(prefs_page)
         self.set_child(toolbar_view)
 
@@ -541,5 +578,11 @@ class _SettingsDialog(Adw.Dialog):
         self._settings["target_calendar_id"] = cal_id
         self._settings["pomodoro_duration"] = int(self._pom_row.get_value())
         self._settings["show_completed"] = self._show_row.get_active()
+        # Collect hidden calendars
+        hidden = []
+        for cal, sw in self._cal_switches:
+            if not sw.get_active():
+                hidden.append(cal["id"])
+        self._settings["hidden_calendars"] = hidden
         self.emit("settings-saved", self._settings)
         self.close()

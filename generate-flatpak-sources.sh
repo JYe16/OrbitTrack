@@ -9,20 +9,27 @@
 set -euo pipefail
 
 GENERATOR="flatpak-pip-generator"
+GEN_CMD=("$GENERATOR")
 
 if ! command -v "$GENERATOR" &>/dev/null; then
     echo "Installing flatpak-pip-generator…"
-    pip install --user flatpak-pip-generator
-    GENERATOR="$HOME/.local/bin/flatpak-pip-generator"
+    python3 -m pip install --user flatpak-pip-generator
+    if command -v "$GENERATOR" &>/dev/null; then
+        GEN_CMD=("$GENERATOR")
+    else
+        GEN_CMD=(python3 -m flatpak_pip_generator)
+    fi
+else
+    GEN_CMD=("$GENERATOR")
 fi
 
 echo "Generating python3-deps.json for GNOME 49 (Python 3.13 aarch64/x86_64)…"
 
-"$GENERATOR" \
+"${GEN_CMD[@]}" \
     --runtime org.gnome.Sdk//49 \
     --yaml \
     --output python3-deps \
-    caldav \
+    "caldav<2" \
     vobject \
     requests \
     lxml

@@ -6,7 +6,7 @@ import gi
 gi.require_version("Adw", "1")
 gi.require_version("Gtk", "4.0")
 
-from gi.repository import Adw, GLib, Gtk
+from gi.repository import Adw, GObject, Gtk
 
 
 class LoginView(Gtk.ScrolledWindow):
@@ -20,7 +20,7 @@ class LoginView(Gtk.ScrolledWindow):
 
     __gsignals__ = {
         "login-requested": (
-            GLib.SignalFlags.RUN_FIRST,
+            GObject.SignalFlags.RUN_FIRST,
             None,
             (str, str, str, bool),
         )
@@ -61,7 +61,7 @@ class LoginView(Gtk.ScrolledWindow):
         icon.add_css_class("accent")
         header_box.append(icon)
 
-        title = Gtk.Label(label="CalDAV Time Track")
+        title = Gtk.Label(label="OrbitTrack")
         title.add_css_class("title-2")
         header_box.append(title)
 
