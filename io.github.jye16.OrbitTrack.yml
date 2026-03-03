@@ -33,4 +33,4 @@ modules:
       - type: git
         url: https://github.com/JYe16/OrbitTrack.git
         tag: v1.0.0
-        commit: bc08ba1a13c5aa4fb1e10b4be0d024ea13dd1d87
+        commit: 4d55d0411c7badc54a2f9f8f00714f9a994d2a68
