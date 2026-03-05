@@ -219,6 +219,20 @@ if [[ "$SKIP_BUILD" -eq 1 ]]; then
   exit 0
 fi
 
+set +e
 rpmbuild --define "_topdir ${TOPDIR}" -ba "$SPEC_PATH"
+RPMBUILD_EXIT=$?
+set -e
+
+if [[ "$RPMBUILD_EXIT" -ne 0 ]]; then
+  BUILDREQ_NOSRC="$(ls -1t "${TOPDIR}/SRPMS/"*.buildreqs.nosrc.rpm 2>/dev/null | head -n1 || true)"
+  if [[ -n "$BUILDREQ_NOSRC" ]]; then
+    echo ""
+    echo "rpmbuild failed, likely due to missing dependency RPMs." >&2
+    echo "Install generated build dependencies with:" >&2
+    echo "  sudo dnf builddep -y ${BUILDREQ_NOSRC}" >&2
+  fi
+  exit "$RPMBUILD_EXIT"
+fi
 
 echo "Build complete. RPM files are under: ${TOPDIR}/RPMS and ${TOPDIR}/SRPMS"
