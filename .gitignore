@@ -19,6 +19,11 @@ repo/
 *.flatpak
 *.ostree
 
+# RPM build artifacts
+rpm-build/
+*.rpm
+*.src.rpm
+
 # Generated Flatpak sources (user generates locally)
 python3-deps.yaml
 python3-deps.json
