@@ -14,6 +14,8 @@ env/
 
 # Flatpak build artifacts
 build-dir/
+.flatpak-build/
+.flatpak-repo/
 .flatpak-builder/
 repo/
 *.flatpak
