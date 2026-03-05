@@ -5,16 +5,18 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TOPDIR_DEFAULT="${PROJECT_ROOT}/rpm-build"
 TOPDIR="${TOPDIR_DEFAULT}"
 SKIP_BUILD=0
+SKIP_DEP_CHECK=0
 
 usage() {
   cat <<'EOF'
-Usage: scripts/build-rpm.sh [--topdir PATH] [--no-build]
+Usage: scripts/build-rpm.sh [--topdir PATH] [--no-build] [--skip-dep-check]
 
 Build a Fedora RPM for OrbitTrack from the current working tree.
 
 Options:
   --topdir PATH  Set rpmbuild _topdir (default: ./rpm-build)
   --no-build     Only generate Source tarball and SPEC file
+  --skip-dep-check  Skip local RPM package pre-check
   -h, --help     Show this help text
 EOF
 }
@@ -28,6 +30,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --no-build)
       SKIP_BUILD=1
+      shift
+      ;;
+    --skip-dep-check)
+      SKIP_DEP_CHECK=1
       shift
       ;;
     -h|--help)
@@ -52,6 +58,31 @@ if ! command -v rpmbuild >/dev/null 2>&1; then
     echo "Warning: rpmbuild not found, but continuing because --no-build was set." >&2
   else
     echo "Error: rpmbuild not found. Install rpm-build first (sudo dnf install rpm-build)." >&2
+    exit 1
+  fi
+fi
+
+if [[ "$SKIP_BUILD" -eq 0 && "$SKIP_DEP_CHECK" -eq 0 ]]; then
+  REQUIRED_RPMS=(
+    rpm-build
+    pyproject-rpm-macros
+    python3-devel
+    python3-wheel
+    desktop-file-utils
+    appstream
+  )
+  MISSING_RPMS=()
+
+  for pkg in "${REQUIRED_RPMS[@]}"; do
+    if ! rpm -q "$pkg" >/dev/null 2>&1; then
+      MISSING_RPMS+=("$pkg")
+    fi
+  done
+
+  if [[ ${#MISSING_RPMS[@]} -gt 0 ]]; then
+    echo "Error: missing Fedora build dependencies: ${MISSING_RPMS[*]}" >&2
+    echo "Install them with:" >&2
+    echo "  sudo dnf install -y ${MISSING_RPMS[*]}" >&2
     exit 1
   fi
 fi
@@ -135,6 +166,7 @@ Source0:        %{name}-%{version}.tar.gz
 BuildArch:      noarch
 BuildRequires:  python3-devel
 BuildRequires:  pyproject-rpm-macros
+BuildRequires:  python3-wheel
 BuildRequires:  desktop-file-utils
 BuildRequires:  appstream
 Requires:       python3-gobject
